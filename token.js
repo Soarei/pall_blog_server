@@ -27,7 +27,6 @@ app.use(async (req, res, next) => {
     /*1. 其他接口校验都是需要token(注册和登录是不需要token校验)
       2.如果校验通过就next 否则就返回登录信息不正确
       3.校验token和user表是否相等
-
     */
     let token = req.headers.token
     const isEval = await PALL_USER.findOne({ attributes: ["user_id"], where: { accesstoken: token } })

@@ -9,7 +9,8 @@ const obj = {
   "Pall_Sensitive": "sensitive",
   "Pall_System_Menus": "systemmenus",
   "Pall_System_Role": "systemroles",
-  "Pall_Upload": "upload"
+  "Pall_Upload": "upload",
+  "Pall_Task": "task"
 }
 const getRouterName = () => {
   return (obj)

@@ -1,6 +1,7 @@
 var express = require('express')
 const axios = require('axios')
 const cheerio = require('cheerio')
+const { v4: uuidv4 } = require('uuid')
 const { sequelize } = require('../../models/init')
 const PALLARTICLE = require('../../models/pall_article/pall_article')
 const resJson = require('../../utils/logFun')
@@ -9,7 +10,6 @@ const moment = require('moment')
 const PALL_LABEL = require('../../models/pall_label/pall_label')
 const PALLPOSTLIKE = require('../../models/pall_postlike/pall_postlike')
 const router = express.Router()
-
 /*
   @params 添加文章
   1:查询user_id是否存在
@@ -28,7 +28,8 @@ router.post('/add', async (req, res) => {
     return resJson(req, res, 5500, null, '请输入发布时间')
   }
   const create_time = moment().format('YYYY-MM-DD HH:mm:ss')
-  await PALLARTICLE.create({ article_title, article_cover, article_content, tags, level: String(level), user_id: new jwtUtil(req.headers.token).verifyToken(), release_time, create_time, catgory_id })
+  const article_id = uuidv4()
+  await PALLARTICLE.create({ article_id, article_title, article_cover, article_content, tags, level: String(level), user_id: new jwtUtil(req.headers.token).verifyToken(), release_time, create_time, catgory_id })
   return resJson(req, res, 5200, [], '添加成功')
 })
 
@@ -38,7 +39,7 @@ router.post('/add', async (req, res) => {
 // 
 router.post('/list', async (req, res, next) => {
   const { page, size } = req.body
-  let newSql = `select a.*,u.user_name,c.catgory_name from pall_articles a, pall_users u ,pall_categories c where a.user_id = u.user_id and a.catgory_id=c.catgory_id order by a.article_id DESC LIMIT ${page - 1},${size} ;`
+  let newSql = `select a.*,u.user_name,c.catgory_name from pall_articles a, pall_users u ,pall_categories c where a.user_id = u.user_id and a.catgory_id=c.catgory_id order by a.article_id ASC LIMIT ${page - 1},${size} ;`
   // let sql  = `select article_id,catgory_name,article_title,article_content,a.article_cover,a.catgory_id,create_time from pall_categories c RIGHT JOIN pall_articles a on c.catgory_id = a.catgory_id LIMIT ${page-1},${size}`
   let count = 'select count(*) from pall_articles'
   const list = await sequelize.query(newSql, { type: sequelize.QueryTypes.SELECT })
@@ -51,10 +52,10 @@ router.post('/list', async (req, res, next) => {
     })
     resolve(result)
   })
-  const postlikeTotal = aid=> new Promise((resolve,reject)=>{
+  const postlikeTotal = aid => new Promise((resolve, reject) => {
     const thumtotal = PALLPOSTLIKE.findAndCountAll({
-      where:{
-        aid:aid
+      where: {
+        aid: aid
       }
     })
     resolve(thumtotal)
@@ -79,10 +80,10 @@ router.post('/list', async (req, res, next) => {
 */
 
 router.post('/edit', async (req, res) => {
-  const { article_id, article_content, article_title, create_time, catgory_id, article_cover,tags, level } = req.body
+  const { article_id, article_content, article_title, create_time, catgory_id, article_cover, tags, level } = req.body
   const list = await PALLARTICLE.update({
-    article_content, article_title, create_time,catgory_id, article_cover,tags, level,
-  },{where: { article_id }})
+    article_content, article_title, create_time, catgory_id, article_cover, tags, level,
+  }, { where: { article_id } })
   if (list[0] < 0) {
     return resJson(req, res, 5500, null, '更新失败')
   }

@@ -4,7 +4,7 @@ const jwtUtil = require('../../utils/jwt')
 const router = express.Router()
 const resJson = require('../../utils/logFun')
 const PALL_USER = require('../../models/pall_user/pall_user')
-const PALL_LOG = require('../../models/pall_log/pall_log')
+const PALLARTICLE = require('../../models/pall_article/pall_article')
 // 引入生成和验证token的类
 
 const validUser = (req, res) => {
@@ -81,5 +81,37 @@ router.post('/admin/login', async (req, res) => {
   }
 })
 
-
+// 用户主页数据
+router.post('/admin/authorinfo', async (req, res) => {
+  let staticinfo = {
+    artile_count: 0,
+    thumbs_count: 0,
+    comment_count: 0,
+    browse_count: 0
+  }
+  //查询文章表该用户数据的综合
+  staticinfo.artile_count = await PALLARTICLE.sum('comment_count', {
+    where: {
+      user_id: 1
+    }
+  })
+  staticinfo.comment_count = await PALLARTICLE.sum('comment_count', {
+    where: {
+      user_id: 1
+    }
+  })
+  // 点赞
+  staticinfo.thumbs_count = await PALLARTICLE.sum('thumbs_count', {
+    where: {
+      user_id: 1
+    }
+  })
+  staticinfo.browse_count = await PALLARTICLE.sum('browse_count', {
+    where: {
+      user_id: 1
+    }
+  })
+  return resJson(req, res, 5200, staticinfo, '注册成功')
+})
+// 
 module.exports = router
