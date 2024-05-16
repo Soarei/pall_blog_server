@@ -9,6 +9,7 @@ var jwtUtil = require('../../utils/jwt')
 const moment = require('moment')
 const PALL_LABEL = require('../../models/pall_label/pall_label')
 const PALLPOSTLIKE = require('../../models/pall_postlike/pall_postlike')
+const PALLARTICLELABEL = require('../../models/pall_article_label/pall_article_label')
 const router = express.Router()
 /*
   @params 添加文章
@@ -18,6 +19,7 @@ const router = express.Router()
 
 router.post('/add', async (req, res) => {
   let { article_title, article_content, catgory_id, release_time, article_cover, tags, level } = req.body
+  tags = tags.join(',')
   if (!article_title) {
     return resJson(req, res, 5500, null, '请输入文章标题')
   }
@@ -80,7 +82,8 @@ router.post('/list', async (req, res, next) => {
 */
 
 router.post('/edit', async (req, res) => {
-  const { article_id, article_content, article_title, create_time, catgory_id, article_cover, tags, level } = req.body
+  let { article_id, article_content, article_title, create_time, catgory_id, article_cover, tags, level } = req.body
+  tags = tags.join(',')
   const list = await PALLARTICLE.update({
     article_content, article_title, create_time, catgory_id, article_cover, tags, level,
   }, { where: { article_id } })
