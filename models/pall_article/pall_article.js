@@ -1,5 +1,10 @@
 const { sequelize } = require('../init')
 const { DataTypes, Sequelize } = require('sequelize')
+const PALL_LABEL = require('../pall_label/pall_label')
+const PALL_ARTICLE_LABEL = require('../pall_article_label/pall_article_label')
+const PALL_POSTLIKE = require('../pall_postlike/pall_postlike')
+const PALL_COMMENT = require('../pall_comment/pall_comment')
+const PALL_USER = require('../pall_user/pall_user')
 const PALLARTICLE = sequelize.define('pall_article', {
   /**
       
@@ -79,9 +84,29 @@ const PALLARTICLE = sequelize.define('pall_article', {
     defaultValue: '1'
   },
 }, { tableName: 'pall_articles', freezeTableName: true, timestamps: false })
-// {define:{freezeTableName:true}}
+
+// 关联表的文章、标签
+PALLARTICLE.belongsToMany(PALL_LABEL, {
+  through: PALL_ARTICLE_LABEL,
+  foreignKey: 'article_id'
+})
+PALL_LABEL.belongsToMany(PALLARTICLE, {
+  through: PALL_ARTICLE_LABEL,
+  foreignKey: 'id'
+})
+// 关联表点赞表、用户表、文章表
+PALLARTICLE.hasMany(PALL_POSTLIKE, {
+  foreignKey: 'aid'
+})
+PALL_POSTLIKE.belongsTo(PALLARTICLE, {
+  foreignKey: 'aid'
+})
+// 评论表、用户表、文章表
+PALLARTICLE.hasMany(PALL_COMMENT, { foreignKey: 'article_id' })
+PALL_COMMENT.belongsTo(PALLARTICLE, { foreignKey: 'article_id' })
+PALL_USER.hasMany(PALL_COMMENT, { foreignKey: 'user_id' })
+PALL_COMMENT.belongsTo(PALL_USER, { foreignKey: 'user_id' })
 PALLARTICLE.sync().then(() => {
   console.log('PALL_ARTICLE CREATED!');
 })
-
 module.exports = PALLARTICLE

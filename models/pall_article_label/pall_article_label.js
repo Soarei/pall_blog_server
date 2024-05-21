@@ -1,16 +1,17 @@
 const { sequelize } = require('../init')
 const { DataTypes } = require('sequelize')
+const PALL_LABEL = require('../pall_label/pall_label')
+const PALLARTICLE = require('../pall_article/pall_article')
 
 const PALL_ARTICLE_LABEL = sequelize.define('pall_article_label', {
   id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
-    primaryKey: true,
     autoIncrement: true,
+    primaryKey: true
   },
   article_id: {
     type: DataTypes.UUID,
-    allowNull: false,
+    allowNull: false
   },
   label_id: {
     type: DataTypes.UUID,

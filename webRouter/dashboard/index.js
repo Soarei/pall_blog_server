@@ -7,6 +7,7 @@ const PALL_USER = require('../../models/pall_user/pall_user')
 const PALL_CATEGORY = require('../../models/pall_category/pall_category')
 const PALL_LABEL = require('../../models/pall_label/pall_label')
 const PALLPOSTLIKE = require('../../models/pall_postlike/pall_postlike')
+const PALL_COMMENT = require('../../models/pall_comment/pall_comment')
 const moment = require('moment')
 const router = express.Router()
 router.get('/article/page', async (req, res) => {
@@ -23,83 +24,110 @@ router.get('/article/page', async (req, res) => {
   //   foreignKey: 'catgory_id',
   //   targetKey: 'catgory_id'
   // })
-
-  // PALLARTICLE.belongsToMany(PALL_LABEL, {
-  //   through: PALL_ARTICLE_LABEL
-  // })
-
-  // PALL_LABEL.belongsToMany(PALLARTICLE, {
-  //   through: PALL_ARTICLE_LABEL
-  // })
-
-  const { rows, count } = await PALLARTICLE.findAndCountAll({
-    where: {
-      catgory_id
-    },
-    attributes: { exclude: ['user_id', 'article_content'] },
-    offset: (Number(page) - 1) * Number(size),
-    limit: Number(size),
-    include: [
-      {
-        attributes: ['user_name', 'user_avatar'],
-        model: PALL_USER
-      }, {
-        attributes: ['catgory_id', 'catgory_name'],
-        model: PALL_CATEGORY,
-      }
-    ],
-  })
-  // 查询标签名
-  const fun = item => new Promise((resolve, reject) => {
-    const result = PALL_LABEL.findOne({
+  try {
+    const { rows, count } = await PALLARTICLE.findAndCountAll({
       where: {
-        id: item
-      }
+        catgory_id
+      },
+      attributes: { exclude: ['user_id'] },
+      // [sequelize.fn('COUNT', sequelize.col('pall_postlike.aid')), 'likeCount']
+      offset: (Number(page) - 1) * Number(size),
+      limit: Number(size),
+      include: [
+        {
+          attributes: ['user_name', 'user_avatar'],
+          model: PALL_USER
+        }, {
+          attributes: ['catgory_id', 'catgory_name'],
+          model: PALL_CATEGORY,
+        }, {
+          attributes: ['label_name', 'id'],
+          model: PALL_LABEL,
+        }
+      ],
     })
-    resolve(result)
-  })
-  // 查询文章是否被当前用户点赞
-  const isThumbs = aid => new Promise(async (resolve, reject) => {
-    const uid = new jwtUtil(req.headers.token).verifyToken()
-    const is_thumbs = await PALLPOSTLIKE.findOne({
-      where: {
-        aid,
-        uid: 1
-      }
+    // 查询文章是否被当前用户点赞
+    const isThumbs = aid => new Promise(async (resolve, reject) => {
+      console.log(aid);
+      const uid = new jwtUtil(req.headers.token).verifyToken()
+      const is_thumbs = await PALLPOSTLIKE.findOne({
+        where: {
+          aid,
+          uid: 1
+        }
+      })
+      const { count } = await PALLPOSTLIKE.findAndCountAll({
+        where: {
+          aid
+        }
+      })
+      resolve({ is_thumbs, count })
     })
-    const { count } = await PALLPOSTLIKE.findAndCountAll({
-      where: {
-        aid
+    async function formatRows() {
+      let list = JSON.parse(JSON.stringify(rows))
+      console.log(list);
+      for (let i = 0; i < list.length; i++) {
+        const { is_thumbs, count } = await isThumbs(list[i].article_id)
+        list[i].is_thumbs = is_thumbs != null ? true : false
+        list[i].thumbsCount = count
       }
-    })
-    resolve({ is_thumbs, count })
-  })
-  async function formatRows() {
-    let list = JSON.parse(JSON.stringify(rows))
-    for (let i = 0; i < list.length; i++) {
-      let tagList = !list[i].tags ? [] : list[i].tags.split(',')
-      list[i].labels = []
-      const { is_thumbs, count } = await isThumbs(list[i].article_id)
-      list[i].is_thumbs = is_thumbs != null ? true : false
-      list[i].thumbsCount = count
-      for (let tags of tagList) {
-        let res = await fun(tags)
-        list[i].labels.push(res.label_name || '')
-      }
+      return list
     }
-    return list
+    const result = await formatRows()
+    return resJson(req, res, 5200, { rows: result, count }, 'success')
+  } catch (error) {
+    console.log(error, 'error');
   }
-  const result = await formatRows()
-  return resJson(req, res, 5200, { rows: result, count }, 'success')
 })
 router.get('/article/page/detail', async (req, res) => {
-  const { articleId } = req.query
-  const data = await PALLARTICLE.findOne({
-    where: {
-      article_id: articleId
+  try {
+    const { articleId } = req.query
+    const data = await PALLARTICLE.findOne({
+      where: {
+        article_id: articleId,
+      }
+    })
+    return resJson(req, res, 5200, data, 'Success')
+  } catch (error) {
+    console.log(error);
+  }
+})
+//获取文章评论
+router.get('/article/page/detail/comments', async (req, res) => {
+  try {
+    const { articleId } = req.query
+    // 获取评论内容
+    const comments = await PALL_COMMENT.findAll({
+      where: {
+        article_id: articleId,
+      },
+      include: {
+        attribute: ['user_id', 'user_name', 'user_avatar'],
+        model: PALL_USER,
+      }
+    })
+    // 获取评论数量
+    const commentCount = await PALL_COMMENT.count({
+      where: { article_id: articleId }
+    });
+    const results = {
+      comments: comments.map(comment => ({
+        id: comment.id,
+        content: comment.content,
+        user: {
+          id: comment.pall_user.user_id,
+          username: comment.pall_user.user_name,
+          avatar: comment.pall_user.user_avatar
+        },
+        createTime: comment.comment_time,
+        commentCount
+      }))
     }
-  })
-  return resJson(req, res, 5200, data, 'Success')
+    return resJson(req, res, 5200, results, 'Success')
+
+  } catch (error) {
+
+  }
 })
 /*
   @params点赞功能 aid uid

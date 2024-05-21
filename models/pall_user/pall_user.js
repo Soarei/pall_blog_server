@@ -50,7 +50,7 @@ const PALL_USER = sequelize.define('pall_user', {
 }, { timestamps: true })
 
 PALL_USER.sync().then(() => {
-  console.log('PALL_USER CREATED!');
+  console.log('用户表初始化成功');
 })
 
 module.exports = PALL_USER
