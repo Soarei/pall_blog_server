@@ -7,6 +7,10 @@ const PALL_COMMENT = sequelize.define('pall_comments', {
     primaryKey: true,
     autoIncrement: true
   },
+  parent_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
   content: {
     type: DataTypes.STRING,
     allowNull: false

@@ -87,7 +87,32 @@ router.get('/article/page/detail', async (req, res) => {
         article_id: articleId,
       }
     })
+
     return resJson(req, res, 5200, data, 'Success')
+  } catch (error) {
+    console.log(error);
+  }
+})
+// 获取点赞数量
+router.get('/article/page/detail/count', async (req, res) => {
+  try {
+    const { articleId } = req.query
+    console.log(articleId);
+    const thumbCount = await PALLPOSTLIKE.count({
+      where: {
+        aid: articleId
+      }
+    })
+    const commentCount = await PALL_COMMENT.count({
+      where: {
+        article_id: articleId
+      }
+    })
+    const result = {
+      thumbCount,
+      commentCount
+    }
+    return resJson(req, res, 5200, result, 'Success')
   } catch (error) {
     console.log(error);
   }
@@ -97,10 +122,11 @@ router.get('/article/page/detail/comments', async (req, res) => {
   try {
     const { articleId } = req.query
     // 获取评论内容
-    const comments = await PALL_COMMENT.findAll({
+    let comments = await PALL_COMMENT.findAll({
       where: {
         article_id: articleId,
       },
+      order: [['comment_time', 'DESC']],
       include: {
         attribute: ['user_id', 'user_name', 'user_avatar'],
         model: PALL_USER,
@@ -113,6 +139,7 @@ router.get('/article/page/detail/comments', async (req, res) => {
     const results = {
       comments: comments.map(comment => ({
         id: comment.id,
+        parent_id: comment.parent_id,
         content: comment.content,
         user: {
           id: comment.pall_user.user_id,
@@ -120,6 +147,7 @@ router.get('/article/page/detail/comments', async (req, res) => {
           avatar: comment.pall_user.user_avatar
         },
         createTime: comment.comment_time,
+        children: comment.children,
         commentCount
       }))
     }
@@ -127,6 +155,23 @@ router.get('/article/page/detail/comments', async (req, res) => {
 
   } catch (error) {
 
+  }
+})
+//添加用户评论
+router.post('/article/page/detail/commentsadd', async (req, res) => {
+  try {
+    const { content, parentId, commentPic, comment_time } = req.body
+    const data = await PALL_COMMENT.create({
+      content,
+      parent_id: parentId,
+      comment_avtar: commentPic,
+      user_id: 1,
+      article_id: '50eb9701-0b86-4011-89ab-e4dca4556c6f',
+      comment_time
+    })
+    return resJson(req, res, 5200, [], '添加成功')
+  } catch (error) {
+    return resJson(req, res, 5500, [], error)
   }
 })
 /*
