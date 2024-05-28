@@ -7,6 +7,7 @@ const PALL_SYSTEM_ROLE = require('../../models/pall_system_role/pall_system_role
 const PALL_SYSTEM_ROLE_USER = require('../../models/pall_system_role_user/pall_system_role_user')
 const PALL_SYSTEM_ROLE_MENU = require('../../models/pall_system_role_menu/pall_system_role_menu')
 const Pall_Blog = require('../../models/pall_user/pall_user')
+const PALL_USER = require('../../models/pall_user/pall_user')
 router.post('/rolelist', async (req, res) => {
   /*
     先查询用户表 根据用户表id去查询用户角色表 查询对应的角色信息
@@ -121,7 +122,38 @@ router.post('/authmenus', async (req, res) => {
   }
   return resJson(req, res, 5500, null, '失败')
 })
+//分配角色
+router.post('/distribute', async (req, res) => {
+  const { roleIds, userId } = req.body
+  try {
+    const user = await PALL_USER.findByPk(userId)
+    if (!user) {
+      throw new Error('未找到该用户')
+    }
+    const create_time = moment().format('YYYY-MM-DD HH:mm:ss')
+    const update_time = moment().format('YYYY-MM-DD HH:mm:ss')
+    const userRoles = roleIds.map(roleIds => (
+      {
+        id: 3,
+        user_id: userId,
+        create_time,
+        update_time,
+        role_id: roleIds
+      }
+    ))
+    await PALL_SYSTEM_ROLE_USER.bulkCreate({ userRoles, updateOnDuplicate: true })
+    // const result = await PALL_SYSTEM_ROLE_USER.update({
 
+    // })
+  } catch (error) {
+    console.log(error);
+  }
+  // let {roleIds, userId } = await PALL_SYSTEM_ROLE.update({
+  //   where: {
+  //     user_id: userId
+  //   }
+  // })
+})
 // 更新管理员角色
 router.post('/updateuserroles', async (req, res) => {
   const { list } = req.body

@@ -8,12 +8,14 @@ const router = express.Router()
 
 // 添加标签接口
 router.post('/add', async (req, res) => {
-  const { label_name } = req.body
-  if (!label_name) {
-    return resJson(req, res, 5500, null, '请输入标签名')
+  try {
+    const { label_name, color } = req.body
+    await PALL_LABEL.create({ label_name, color, create_time: moment().format('YYYY-MM-DD HH:mm:ss') })
+    return resJson(req, res, 5200, [], '添加成功')
+  } catch (error) {
+    console.log(error);
+    return resJson(req, res, 5500, null, error.message)
   }
-  await PALL_LABEL.create({ label_name, create_time: moment().format('YYYY-MM-DD HH:mm:ss') })
-  return resJson(req, res, 5200, [], '添加成功')
 })
 
 // 获取接口数据
@@ -30,30 +32,24 @@ router.post('/list', async (req, res) => {
   let obj = { rows: list, count: total[0]['count(*)'] }
   return resJson(req, res, 5200, obj, 'Success')
 })
-
 // 编辑接口
-
 router.post('/editlabel', async (req, res) => {
-  const { label_name, id } = req.body
-  if (!label_name) {
-    return resJson(req, res, 5500, null, `请输入标签名`)
+  try {
+    const { label_name, id, color } = req.body
+    const result = await PALL_LABEL.update({ label_name, color }, { where: { id } })
+    return resJson(req, res, 5200, [], `编辑成功`)
+  } catch (error) {
+    return resJson(req, res, 5500, [], error.message)
   }
-  const result = await PALL_LABEL.update({ label_name }, { where: { id } })
-  if (result[0] < 0) return resJson(req, res, 5500, null, err, 4)
-  return resJson(req, res, 5200, null, `编辑成功`)
 })
-
 // 删除接口
-
 router.post('/deletelabel', async (req, res) => {
   const { id } = req.body
   const result = await PALL_LABEL.destroy({ where: { id } })
   if (result == 1) return resJson(req, res, 5200, 'Success')
   return resJson(req, res, 5500, '删除失败')
 })
-
 // 获取全部标签
-
 router.post('/alllist', async (req, res) => {
   const list = await PALL_LABEL.findAll({
     where: {},

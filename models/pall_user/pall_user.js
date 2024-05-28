@@ -1,5 +1,7 @@
 const { sequelize } = require('../init')
 const { DataTypes, Sequelize } = require('sequelize')
+const PALL_SYSTEM_ROLE = require('../pall_system_role/pall_system_role')
+const PALL_SYSTEM_ROLE_USER = require('../pall_system_role_user/pall_system_role_user')
 const PALL_USER = sequelize.define('pall_user', {
   /**
       
@@ -49,6 +51,8 @@ const PALL_USER = sequelize.define('pall_user', {
 
 }, { timestamps: true })
 
+PALL_USER.belongsToMany(PALL_SYSTEM_ROLE, { through: PALL_SYSTEM_ROLE_USER })
+PALL_SYSTEM_ROLE.belongsToMany(PALL_USER, { through: PALL_SYSTEM_ROLE_USER })
 PALL_USER.sync().then(() => {
   console.log('用户表初始化成功');
 })

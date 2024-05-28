@@ -2,37 +2,38 @@ var express = require('express')
 const axios = require('axios')
 const cheerio = require('cheerio')
 const { v4: uuidv4 } = require('uuid')
-const { sequelize } = require('../../models/init')
+const { Op } = require('sequelize')
 const PALLARTICLE = require('../../models/pall_article/pall_article')
 const resJson = require('../../utils/logFun')
 var jwtUtil = require('../../utils/jwt')
 const moment = require('moment')
 const PALL_LABEL = require('../../models/pall_label/pall_label')
 const PALLPOSTLIKE = require('../../models/pall_postlike/pall_postlike')
-const PALLARTICLELABEL = require('../../models/pall_article_label/pall_article_label')
+const PALL_ARTICLE_LABEL = require('../../models/pall_article_label/pall_article_label')
+const PALL_USER = require('../../models/pall_user/pall_user')
+const PALL_CATEGORY = require('../../models/pall_category/pall_category')
 const router = express.Router()
 /*
   @params 添加文章
   1:查询user_id是否存在
-
 */
 
 router.post('/add', async (req, res) => {
-  let { article_title, article_content, catgory_id, release_time, article_cover, tags, level } = req.body
-  tags = tags.join(',')
-  if (!article_title) {
-    return resJson(req, res, 5500, null, '请输入文章标题')
+  try {
+    console.log(PALLARTICLE);
+    let { article_title, article_content, catgory_id, release_time, article_cover, tags, level } = req.body
+    const create_time = moment().format('YYYY-MM-DD HH:mm:ss')
+    const article_id = uuidv4()
+    await PALLARTICLE.create({ article_id, article_title, article_cover, article_content, tags: tags.join(','), level: String(level), user_id: new jwtUtil(req.headers.token).verifyToken(), release_time, create_time, catgory_id, listing: '0' })
+    let atags = tags.map(item => ({
+      article_id: article_id,
+      label_id: item
+    }))
+    await PALL_ARTICLE_LABEL.bulkCreate(atags)
+    return resJson(req, res, 5200, [], '添加成功')
+  } catch (error) {
+    return resJson(req, res, 5500, null, error.message)
   }
-  if (!article_content) {
-    return resJson(req, res, 5500, null, '请输入文章内容')
-  }
-  if (!release_time) {
-    return resJson(req, res, 5500, null, '请输入发布时间')
-  }
-  const create_time = moment().format('YYYY-MM-DD HH:mm:ss')
-  const article_id = uuidv4()
-  await PALLARTICLE.create({ article_id, article_title, article_cover, article_content, tags, level: String(level), user_id: new jwtUtil(req.headers.token).verifyToken(), release_time, create_time, catgory_id })
-  return resJson(req, res, 5200, [], '添加成功')
 })
 
 /*
@@ -40,57 +41,89 @@ router.post('/add', async (req, res) => {
 */
 // 
 router.post('/list', async (req, res, next) => {
-  const { page, size } = req.body
-  let newSql = `select a.*,u.user_name,c.catgory_name from pall_articles a, pall_users u ,pall_categories c where a.user_id = u.user_id and a.catgory_id=c.catgory_id order by a.article_id ASC LIMIT ${page - 1},${size} ;`
-  // let sql  = `select article_id,catgory_name,article_title,article_content,a.article_cover,a.catgory_id,create_time from pall_categories c RIGHT JOIN pall_articles a on c.catgory_id = a.catgory_id LIMIT ${page-1},${size}`
-  let count = 'select count(*) from pall_articles'
-  const list = await sequelize.query(newSql, { type: sequelize.QueryTypes.SELECT })
-  const total = await sequelize.query(count, { type: sequelize.QueryTypes.SELECT })
-  const fun = item => new Promise((resolve, reject) => {
-    const result = PALL_LABEL.findOne({
+  try {
+    const { page, size, article_title } = req.body
+    let { rows, count } = await PALLARTICLE.findAndCountAll({
       where: {
-        id: item
-      }
+        article_title: {
+          [Op.like]: `%${article_title}%`
+        }
+      },
+      order: [['create_time', 'DESC']],
+      attributes: { exclude: ['user_id'] },
+      offset: (page - 1) * size,
+      limit: size,
+      include: [
+        {
+          attributes: ['catgory_id', 'catgory_name'],
+          model: PALL_CATEGORY,
+        },
+        {
+          attributes: ['user_name', 'user_avatar'],
+          model: PALL_USER
+        },
+        {
+          attributes: ['label_name', 'id', 'color'],
+          model: PALL_LABEL
+        }
+      ],
     })
-    resolve(result)
-  })
-  const postlikeTotal = aid => new Promise((resolve, reject) => {
-    const thumtotal = PALLPOSTLIKE.findAndCountAll({
-      where: {
-        aid: aid
-      }
-    })
-    resolve(thumtotal)
-  })
-  for (let item of list) {
-    let tagList = !item.tags ? [] : item.tags.split(',')
-    item.tags = item.tags.split(',')
-    item.release_time = moment(item.release_time).format('YYYY-MM-DD HH:mm:ss')
-    item.labels = []
-    item.thumbs_count = (await postlikeTotal(item.article_id)).count
-    for (let tags of tagList) {
-      let res = await fun(tags)
-      item.labels.push(res.label_name || '')
+    console.log(rows);
+    const results = {
+      rows: rows.map(item => (
+        {
+          labels: item.pall_labels.map(label => ({
+            name: label.label_name,
+            id: label.id,
+            color: label.color
+          })),
+          article_content: item.article_content,
+          article_id: item.article_id,
+          article_cover: item.article_cover,
+          article_title: item.article_title,
+          browse_count: item.browse_count,
+          catgory_id: item.catgory_id,
+          level: Number(item.level),
+          create_time: item.create_time,
+          catgory_name: item.pall_category ? item.pall_category.catgory_name : '未找到分类',
+          user_avatar: item.pall_user.user_avatar,
+          user_name: item.pall_user.user_name,
+          release_time: item.release_time,
+          status: item.status,
+          tags: item.tags,
+          count,
+        }))
     }
+    return resJson(req, res, 5200, results, 'Success')
+  } catch (error) {
+    console.log(error);
+    return resJson(req, res, 5500, null, error.message)
   }
-
-  let obj = { rows: list, count: total[0]['count(*)'] }
-  return resJson(req, res, 5200, obj, 'Success')
 })
 /*
   @params编辑用户文章
 */
 
 router.post('/edit', async (req, res) => {
-  let { article_id, article_content, article_title, create_time, catgory_id, article_cover, tags, level } = req.body
-  tags = tags.join(',')
-  const list = await PALLARTICLE.update({
-    article_content, article_title, create_time, catgory_id, article_cover, tags, level,
-  }, { where: { article_id } })
-  if (list[0] < 0) {
-    return resJson(req, res, 5500, null, '更新失败')
+  try {
+    let { article_id, article_content, article_title, create_time, catgory_id, article_cover, tags, level } = req.body
+    await PALLARTICLE.update({
+      article_content, article_title, create_time, catgory_id, article_cover, tags: tags.join(','), level,
+    }, { where: { article_id } })
+    await PALL_ARTICLE_LABEL.destroy({
+      where: {
+        article_id
+      }
+    })
+    let atags = tags.map(item => ({
+      article_id: article_id,
+      label_id: item
+    }))
+    await PALL_ARTICLE_LABEL.bulkCreate(atags)
+    return resJson(req, res, 5200, null, '更新成功')
+  } catch (error) {
+    return resJson(req, res, 5500, null, error.message)
   }
-  return resJson(req, res, 5200, null, '更新成功')
 })
 
 /*

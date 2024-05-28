@@ -22,6 +22,10 @@ const PALL_LABEL = sequelize.define('pall_label', {
     type: DataTypes.DATE,
     allowNull: true
   },
+  color: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
   status: {
     type: DataTypes.BOOLEAN,
     allowNull: false,

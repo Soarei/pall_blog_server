@@ -1,13 +1,16 @@
 var express = require('express')
 var jwtUtil = require('../../utils/jwt')
+const { Op } = require('sequelize')
 const resJson = require('../../utils/logFun')
 const PALLARTICLE = require('../../models/pall_article/pall_article')
 const PALL_ARTICLE_LABEL = require('../../models/pall_article_label/pall_article_label')
+const PALL_ARTICLE_COLLECT = require('../../models/pall_article_collect/pall_article_collect')
 const PALL_USER = require('../../models/pall_user/pall_user')
 const PALL_CATEGORY = require('../../models/pall_category/pall_category')
 const PALL_LABEL = require('../../models/pall_label/pall_label')
 const PALLPOSTLIKE = require('../../models/pall_postlike/pall_postlike')
 const PALL_COMMENT = require('../../models/pall_comment/pall_comment')
+const PALL_COURSE = require('../../models/pall_course/pall_course')
 const moment = require('moment')
 const router = express.Router()
 router.get('/article/page', async (req, res) => {
@@ -16,21 +19,21 @@ router.get('/article/page', async (req, res) => {
     foreignKey: 'user_id',
     targetKey: 'user_id'
   })
-  PALLARTICLE.hasOne(PALL_CATEGORY, {
-    foreignKey: 'catgory_id',
-    targetKey: 'catgory_id'
+  // 关联表的文章、标签
+  PALLARTICLE.belongsToMany(PALL_LABEL, {
+    through: PALL_ARTICLE_LABEL,
+    foreignKey: 'article_id',
   })
-  // PALL_CATEGORY.hasMany(PALLARTICLE, {
-  //   foreignKey: 'catgory_id',
-  //   targetKey: 'catgory_id'
-  // })
+  PALL_LABEL.belongsToMany(PALLARTICLE, {
+    through: PALL_ARTICLE_LABEL,
+    foreignKey: 'label_id',
+  })
   try {
     const { rows, count } = await PALLARTICLE.findAndCountAll({
       where: {
         catgory_id
       },
       attributes: { exclude: ['user_id'] },
-      // [sequelize.fn('COUNT', sequelize.col('pall_postlike.aid')), 'likeCount']
       offset: (Number(page) - 1) * Number(size),
       limit: Number(size),
       include: [
@@ -41,42 +44,44 @@ router.get('/article/page', async (req, res) => {
           attributes: ['catgory_id', 'catgory_name'],
           model: PALL_CATEGORY,
         }, {
-          attributes: ['label_name', 'id'],
-          model: PALL_LABEL,
+          attributes: ['label_name', 'id', 'color'],
+          model: PALL_LABEL
         }
       ],
     })
-    // 查询文章是否被当前用户点赞
-    const isThumbs = aid => new Promise(async (resolve, reject) => {
-      console.log(aid);
-      const uid = new jwtUtil(req.headers.token).verifyToken()
-      const is_thumbs = await PALLPOSTLIKE.findOne({
-        where: {
-          aid,
-          uid: 1
-        }
-      })
-      const { count } = await PALLPOSTLIKE.findAndCountAll({
-        where: {
-          aid
-        }
-      })
-      resolve({ is_thumbs, count })
-    })
-    async function formatRows() {
-      let list = JSON.parse(JSON.stringify(rows))
-      console.log(list);
-      for (let i = 0; i < list.length; i++) {
-        const { is_thumbs, count } = await isThumbs(list[i].article_id)
-        list[i].is_thumbs = is_thumbs != null ? true : false
-        list[i].thumbsCount = count
-      }
-      return list
-    }
-    const result = await formatRows()
-    return resJson(req, res, 5200, { rows: result, count }, 'success')
+    return resJson(req, res, 5200, { rows, count }, 'success')
   } catch (error) {
     console.log(error, 'error');
+  }
+})
+//获取轮播图接口
+router.get('/article/platform/banner', async (req, res) => {
+  try {
+    const banner = await PALL_COURSE.findAll({
+      order: [['sort', 'DESC']],
+      limit: 5
+    })
+    return resJson(req, res, 5200, banner, 'Success')
+  } catch (error) {
+    return resJson(req, res, 5500, null, error.message)
+  }
+})
+//获取浏览量很高的五篇文章
+router.get('/article/top', async (req, res) => {
+  try {
+    const topArticle = await PALLARTICLE.findAll({
+      order: [['browse_count', 'DESC']],
+      limit: 10
+    })
+    const result = {
+      data: topArticle.map(item => ({
+        article_id: item.article_id,
+        article_title: item.article_title
+      }))
+    }
+    return resJson(req, res, 5200, result, 'Success')
+  } catch (error) {
+    return resJson(req, res, 5500, null, error.message)
   }
 })
 router.get('/article/page/detail', async (req, res) => {
@@ -85,12 +90,91 @@ router.get('/article/page/detail', async (req, res) => {
     const data = await PALLARTICLE.findOne({
       where: {
         article_id: articleId,
+      },
+      attributes: { exclude: ['user_id'] }
+    })
+    //文章点赞数
+    const thumbCount = await PALLPOSTLIKE.count({
+      where: {
+        aid: articleId
       }
     })
-
-    return resJson(req, res, 5200, data, 'Success')
+    //文章收藏数
+    const collectCount = await PALL_ARTICLE_COLLECT.count({
+      where: {
+        article_id: articleId
+      }
+    })
+    //获取文章标签
+    const labels = await PALL_LABEL.findAll({
+      where: {
+        "id": {
+          [Op.or]: data.tags.split(',')
+        }
+      },
+      attributes: ['label_name', 'color']
+    })
+    const article = await PALLARTICLE.findByPk(articleId);
+    //浏览量➕1
+    if (article) {
+      article.browse_count += 1
+      await article.save();
+    }
+    //返回结果封装
+    const results = {
+      thumbCount,
+      collectCount,
+      labels,
+      ...data.dataValues
+    }
+    return resJson(req, res, 5200, results, 'Success')
   } catch (error) {
     console.log(error);
+  }
+})
+//获取作者信息
+router.get('/article/page/detail/userinfo', async (req, res) => {
+  try {
+    const { articleId } = req.query
+    const result = await PALLARTICLE.findOne({
+      where: {
+        article_id: articleId
+      },
+      attributes: ['user_id']
+    })
+    const userId = result.user_id
+    //获取文章数
+    const articleCount = await PALLARTICLE.count({
+      where: {
+        user_id: userId
+      }
+    })
+    // 获取评论数
+    const commentCount = await PALL_COMMENT.count({
+      where: {
+        user_id: userId
+      }
+    })
+    // 获取收藏数
+    const collectCount = 99
+    // 获取作者信息
+    const pallUserInfo = await PALL_USER.findOne({
+      where: {
+        user_id: userId
+      },
+      attributes: ['user_name', 'user_avatar', 'user_gender']
+    })
+    var results = {
+      articleCount,
+      commentCount,
+      collectCount,
+      userName: pallUserInfo.user_name,
+      userAvatar: pallUserInfo.user_avatar,
+      userGender: pallUserInfo.user_gender
+    }
+    return resJson(req, res, 5200, results, 'Success')
+  } catch (error) {
+    return resJson(req, res, 5500, results, error)
   }
 })
 // 获取点赞数量
@@ -108,9 +192,15 @@ router.get('/article/page/detail/count', async (req, res) => {
         article_id: articleId
       }
     })
+    const collectCount = await PALL_ARTICLE_COLLECT.count({
+      where: {
+        article_id: articleId
+      }
+    })
     const result = {
       thumbCount,
-      commentCount
+      commentCount,
+      collectCount
     }
     return resJson(req, res, 5200, result, 'Success')
   } catch (error) {
