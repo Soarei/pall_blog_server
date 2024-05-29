@@ -1,6 +1,6 @@
 var express = require('express')
 var jwtUtil = require('../../utils/jwt')
-const { Op } = require('sequelize')
+const { Op, Sequelize } = require('sequelize')
 const resJson = require('../../utils/logFun')
 const PALLARTICLE = require('../../models/pall_article/pall_article')
 const PALL_ARTICLE_LABEL = require('../../models/pall_article_label/pall_article_label')
@@ -29,6 +29,7 @@ router.get('/article/page', async (req, res) => {
     foreignKey: 'label_id',
   })
   try {
+    //  [Sequelize.fn('COUNT', Sequelize.col('pall_postlikes.aid')), "likeCount"]
     const { rows, count } = await PALLARTICLE.findAndCountAll({
       where: {
         catgory_id
@@ -46,6 +47,10 @@ router.get('/article/page', async (req, res) => {
         }, {
           attributes: ['label_name', 'id', 'color'],
           model: PALL_LABEL
+        }, {
+          attributes: { exclude: ['uid'] },
+          model: PALLPOSTLIKE,
+          as: 'pall_postlikes'
         }
       ],
     })
@@ -84,6 +89,7 @@ router.get('/article/top', async (req, res) => {
     return resJson(req, res, 5500, null, error.message)
   }
 })
+//文章详情
 router.get('/article/page/detail', async (req, res) => {
   try {
     const { articleId } = req.query
@@ -269,7 +275,6 @@ router.post('/article/page/detail/commentsadd', async (req, res) => {
 */
 router.post('/postlike', async (req, res) => {
   // 判断当前用户是否已经点赞
-  console.log(req.body);
   const { article_id } = req.body
   const uid = new jwtUtil(req.headers.token).verifyToken()
   const result = await PALLPOSTLIKE.findOne({

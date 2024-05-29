@@ -113,10 +113,10 @@ PALL_LABEL.belongsToMany(PALLARTICLE, {
 })
 // 关联表点赞表、用户表、文章表
 PALLARTICLE.hasMany(PALL_POSTLIKE, {
-  foreignKey: 'aid'
+  foreignKey: 'aid',
 })
 PALL_POSTLIKE.belongsTo(PALLARTICLE, {
-  foreignKey: 'aid'
+  foreignKey: 'aid',
 })
 // 评论表、用户表、文章表
 PALLARTICLE.hasMany(PALL_COMMENT, { foreignKey: 'article_id' })

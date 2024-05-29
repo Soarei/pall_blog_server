@@ -1,9 +1,12 @@
 var express = require('express')
 const PALL_LOG = require('../../models/pall_log/pall_log')
+const PALL_GITHUB = require('../../models/pall_log/pall_github')
 // 引入生成和验证token的类
 const resJson = require('../../utils/logFun')
+const config = require('../../utils/config')
 const { sequelize } = require('../../models/init')
 const moment = require('moment')
+const axios = require('axios')
 const router = express.Router()
 // 登录日志查询
 router.post('/getloglist', async (req, res) => {
@@ -25,6 +28,43 @@ router.post('/getloglist', async (req, res) => {
 
 // 用户日志 (包含用户行为)
 
-
+// github更新日志
+router.post('/updategit', async (req, res) => {
+  try {
+    axios.get(
+      'https://api.github.com/repos/Soarei/pall_blog_server/commits',
+      {
+        headers: {
+          "Authorization": `token ${config.githubUrl}`
+        }
+      }
+    ).then(async res => {
+      const result = res.data.map(item => ({
+        sha: item.sha,
+        author: item.commit.author.name,
+        email: item.commit.author.email,
+        commit_time: item.commit.author.date,
+        message: item.commit.message
+      }))
+      await PALL_GITHUB.bulkCreate(result, { updateOnDuplicate: ['author'] })
+      return resJson(req, res, 5300, [], '同步成功')
+    })
+  } catch (error) {
+    return resJson(req, res, 5500, null, error.message)
+  }
+})
+router.post('/githublist', async (req, res) => {
+  try {
+    const { page, size } = req.body
+    const { rows, count } = await PALL_GITHUB.findAndCountAll({
+      order: [['commit_time', 'DESC']],
+      offset: (Number(page) - 1) * Number(size),
+      limit: Number(size),
+    })
+    return resJson(req, res, 5200, { rows, count }, 'Success')
+  } catch (error) {
+    return resJson(req, res, 5500, null, error.message)
+  }
+})
 
 module.exports = router

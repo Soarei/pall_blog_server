@@ -5,8 +5,8 @@ const router = express.Router()
 const resJson = require('../../utils/logFun')
 const PALL_USER = require('../../models/pall_user/pall_user')
 const PALLARTICLE = require('../../models/pall_article/pall_article')
+const PALL_COMMENT = require('../../models/pall_comment/pall_comment')
 // 引入生成和验证token的类
-
 const validUser = (req, res) => {
   const { user_account, password } = req.body
   if (!user_account) {
@@ -90,12 +90,12 @@ router.post('/admin/authorinfo', async (req, res) => {
     browse_count: 0
   }
   //查询文章表该用户数据的综合
-  staticinfo.artile_count = await PALLARTICLE.sum('comment_count', {
+  staticinfo.artile_count = await PALLARTICLE.count({
     where: {
       user_id: 1
     }
   })
-  staticinfo.comment_count = await PALLARTICLE.sum('comment_count', {
+  staticinfo.comment_count = await PALL_COMMENT.count({
     where: {
       user_id: 1
     }
