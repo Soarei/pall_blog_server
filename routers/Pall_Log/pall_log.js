@@ -47,11 +47,7 @@ router.post('/updategit', async (req, res) => {
         message: item.commit.message
       }))
       await PALL_GITHUB.bulkCreate(result, { updateOnDuplicate: ['author'] })
-      return resJson(req, res, 5300, [], '同步成功')
-    }).catch(err => {
-      // throw new Error(err)
-      console.log(`token ${config.githubUrl}${config.selectgit}`);
-      return resJson(req, res, 5500, null, err.message)
+      return resJson(req, res, 5200, [], '同步成功')
     })
   } catch (error) {
     return resJson(req, res, 5500, null, error.message)
