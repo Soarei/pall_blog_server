@@ -35,7 +35,7 @@ router.post('/updategit', async (req, res) => {
       'https://api.github.com/repos/Soarei/pall_blog_server/commits',
       {
         headers: {
-          "Authorization": `token github_pat_11BAHSRNQ0X2eDZ3KdTCrs_${config.selectgit}`
+          "Authorization": `token ${config.githubUrl}`
         }
       }
     ).then(async res => {
@@ -48,6 +48,10 @@ router.post('/updategit', async (req, res) => {
       }))
       await PALL_GITHUB.bulkCreate(result, { updateOnDuplicate: ['author'] })
       return resJson(req, res, 5300, [], '同步成功')
+    }).catch(err => {
+      // throw new Error(err)
+      console.log(`token ${config.githubUrl}${config.selectgit}`);
+      return resJson(req, res, 5500, null, err.message)
     })
   } catch (error) {
     return resJson(req, res, 5500, null, error.message)
