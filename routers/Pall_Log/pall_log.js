@@ -35,7 +35,7 @@ router.post('/updategit', async (req, res) => {
       'https://api.github.com/repos/Soarei/pall_blog_server/commits',
       {
         headers: {
-          "Authorization": `token ${config.githubUrl}${config.selectgit}`
+          "Authorization": `token github_pat_11BAHSRNQ0X2eDZ3KdTCrs_${config.selectgit}`
         }
       }
     ).then(async res => {
