@@ -47,7 +47,7 @@ router.post('/list', async (req, res, next) => {
       where: {
         article_title: {
           [Op.like]: `%${article_title}%`
-        }
+        },
       },
       order: [['create_time', 'DESC']],
       attributes: { exclude: ['user_id'] },
@@ -90,6 +90,7 @@ router.post('/list', async (req, res, next) => {
           user_name: item.pall_user.user_name,
           release_time: item.release_time,
           status: item.status,
+          listing: item.listing,
           tags: item.tags,
           count,
         }))
