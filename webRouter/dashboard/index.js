@@ -71,6 +71,18 @@ router.get('/article/platform/banner', async (req, res) => {
     return resJson(req, res, 5500, null, error.message)
   }
 })
+//获取热门标签接口
+router.get('/article/hotlabel', async (req, res) => {
+  try {
+    const list = await PALL_LABEL.findAll({
+      order: [['sort', 'DESC']],
+      limit: 5
+    })
+    return resJson(req, res, 5200, list, 'Success')
+  } catch (error) {
+    return resJson(req, res, 5500, null, error.message)
+  }
+})
 //获取浏览量很高的五篇文章
 router.get('/article/top', async (req, res) => {
   try {
