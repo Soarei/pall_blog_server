@@ -20,11 +20,10 @@ const router = express.Router()
 
 router.post('/add', async (req, res) => {
   try {
-    console.log(PALLARTICLE);
-    let { article_title, article_content, catgory_id, release_time, article_cover, tags, level } = req.body
+    let { article_title, article_content, catgory_id, article_cover, tags, level, articleType, abstract } = req.body
     const create_time = moment().format('YYYY-MM-DD HH:mm:ss')
     const article_id = uuidv4()
-    await PALLARTICLE.create({ article_id, article_title, article_cover, article_content, tags: tags.join(','), level: String(level), user_id: new jwtUtil(req.headers.token).verifyToken(), release_time, create_time, catgory_id, listing: '0' })
+    await PALLARTICLE.create({ article_id, article_title, article_cover, article_content, tags: tags.join(','), level: String(level), user_id: new jwtUtil(req.headers.token).verifyToken(), release_time: create_time, create_time, catgory_id, listing: '0', artcile_type: articleType, abstract })
     let atags = tags.map(item => ({
       article_id: article_id,
       label_id: item

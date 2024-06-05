@@ -60,6 +60,17 @@ const PALLARTICLE = sequelize.define('pall_article', {
     type: DataTypes.TEXT,
     allowNull: false
   },
+  // 文章类型
+  article_type: {
+    type: DataTypes.ENUM('1', '2', '3'),
+    defaultValue: '1',
+    allowNull: true
+  },
+  //摘要
+  abstract: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   // 点赞次数
   thumbs_count: {
     type: DataTypes.INTEGER,

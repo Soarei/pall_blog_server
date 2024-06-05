@@ -15,7 +15,15 @@ router.post('/list', async (req, res) => {
   })
   return resJson(req, res, 5200, list, 'Success')
 })
-
+router.post('/alllist', async (req, res) => {
+  const { page, size } = req.body
+  const list = await PALL_CATEGORY.findAll({
+    where: {},
+  }).catch((err) => {
+    console.log(err);
+  })
+  return resJson(req, res, 5200, list, 'Success')
+})
 router.post('/add', async (req, res) => {
   const { catgory_name, catgory_icon, catgory_rank } = req.body
   const create_time = moment().format('YYYY-MM-DD HH:mm:ss')

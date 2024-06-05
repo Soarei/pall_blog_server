@@ -75,8 +75,7 @@ router.get('/article/platform/banner', async (req, res) => {
 router.get('/article/hotlabel', async (req, res) => {
   try {
     const list = await PALL_LABEL.findAll({
-      order: [['sort', 'DESC']],
-      limit: 5
+      order: [['create_time', 'DESC']],
     })
     return resJson(req, res, 5200, list, 'Success')
   } catch (error) {
