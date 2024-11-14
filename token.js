@@ -51,12 +51,14 @@ webRouterFiles.forEach(w => {
 app.use(router)
 app.use(function (err, req, res, next) {
   if (err) {
+    console.log(err);
+
     const { message } = err
     return resJson(req, res, 5500, null, message, 3)
   }
 })
-app.listen(4000, () => {
-  console.log('http://localhost:4000');
+app.listen(4001, () => {
+  console.log('http://localhost:4001');
 })
 
 
